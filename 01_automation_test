@@ -1,0 +1,65 @@
+#create a S3 bucket to host static website there  with ansible 
+- - -
+
+# Create a simple S3 bucket  
+ 
+    hosts: localhost 
+    connection: local 
+    Vars:
+    	  aws_access_key: ‘’((aws_access_key)) ‘’
+        aws_secret_key: ‘’((aws_secret_key)) ‘’
+
+#Never share or show your credentials to others 
+
+    Tasks :
+      -name: Create a simple S3 bucket
+       amazon.aws.s3_bucket: 
+          name:  testsBTPconsulting
+          state: present 
+          region: eu-west-3
+          aws_access_key: ‘’((aws_access_key)) ‘’
+          aws_secret_key: ‘’((aws_secret_key)) ‘’
+
+# Create a folder in  S3 bucket 
+     
+      -name: create a folder in  S3 bucket to put the html file for ex
+       amazon.aws.s3: 
+         bucket: testsBTPconsulting
+         object: /Desktop/path
+         mode: create
+         aws_access_key: ‘’((aws_access_key)) ‘’
+         aws_secret_key: ‘’((aws_secret_key)) ‘’
+
+
+# Upload the html file  in  S3 bucket folder and make it public access 
+     
+      -name: put file in S3 
+       amazon.aws.s3: 
+          bucket: testsBTPconsulting
+          object: /Desktop/path/index.html
+          src: index.html
+          mode: put 
+          Permission: public-read 
+          aws_access_key: ‘’((aws_access_key)) ‘’
+          aws_secret_key: ‘’((aws_secret_key)) ‘’
+
+
+#When the file is upload , copy the url generate in S3 bucket and paste it in the browser to access to the website 
+
+
+                                 Or
+
+
+
+#Automate with ansible the installation of web server serving Static content without AWS
+
+- - -
+
+    hosts: all
+    Tasks:
+
+     - name: web deployment 
+       package:"name=httpd status=present" 
+       copy: "src=index.htlm dest=/var/www/html"
+       service: "name=httpd state=started"
+      
