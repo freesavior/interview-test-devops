@@ -1,0 +1,132 @@
+#Automate AWS infrastructure using terraform 
+
+
+#create a EC2 on AWS  to deploy application for example 
+
+#provider can be aws , azure or other cloud provider 
+
+provider "aws" {
+  access_key = "AKIAZ4QMWYEN2MSY3BA3 "
+  secret_key = "XEcomnwfxL9OSvTFAuhYaRnUnGrmZoyBK3Q2nz1Q"
+  
+ region     = "us-east-1"
+}
+
+#my credential has been already deleted never show or share your credentials  with others 
+
+  resource "aws_instance" " test " {
+  ami           = "ami-2757f631"
+  instance_type = "t2.micro"
+  
+#every time you change region your ami change too be sure to choose the correct one 
+}
+
+
+#create a S3 bucket for stockage purpose for example static website or to stock artifacts file from Gitlab
+
+  resource "aws_s3_bucket" "test bucket" {
+
+#The bucket should have a unique name 
+
+  bucket ="testBTPconsulting21"
+
+#acl is for security purpose to deny or permit  inbound  and outbound traffic
+  
+  acl    = "private"
+
+#tags is important when we have many s3 buckets 
+
+  tags = {
+    Name        = "My test bucket" 
+    Environment = "Dev"
+  }
+}
+
+
+#create VPC ,it looks like a local network on AWS where you can deploy your application for example 
+
+  resource "aws_vpc" "dev env"  {
+
+#Define a cidr block only between /16 and /28 
+
+  cidr_block       = "10.0.0.0/16"
+  instance_tenancy = "default"
+
+  tags = {
+    Name = "VPC for dev   "
+  }
+}
+
+#subnet inside the VPC in order to have a private one which doesn’t go to internet 
+
+resource "aws_subnet" "dev subnet  " {
+  vpc_id     = aws_vpc.dev env.id
+  cidr_block = "10.0.1.0/24"
+
+  tags = {
+    Name = "dev subnet   "
+  }
+}
+
+#create  a SG to allow only inbound or outbound  traffic 
+
+resource "aws_security_group" "allow_dev trafic" {
+  name        = "allow_dev trafic "
+  description = "Allow dev_inbound_trafic"
+  vpc_id      = aws_vpc.dev env.id
+
+  ingress = [
+    {
+      description      = "dev from VPC"
+      from_port        = 443
+      to_port          = 443
+      protocol         = "tcp"
+      cidr_blocks      = [aws_vpc.dev subnet.cidr_block]
+      ipv6_cidr_blocks = [aws_vpc.dev env.ipv6_cidr_block]
+    }
+  ]
+
+  egress = [
+    {
+      from_port        = 0
+      to_port          = 0
+      protocol         = "-1"
+      cidr_blocks      = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = ["::/0"]
+    }
+  ]
+
+  tags = {
+    Name = "allow_dev_trafic"
+  }
+}
+
+#ECS to deploy microservices on AWS to scale ,high performance and low latency
+
+
+resource "aws_ecs_service" "mongo" {
+  name            = "mongodb"
+  cluster         = aws_ecs_cluster.dev.id
+  task_definition = aws_ecs_task_definition.mongo.arn
+  desired_count   = 3
+  iam_role        = aws_iam_role.dev.arn
+  depends_on      = [aws_iam_role_policy.dev]
+
+  ordered_placement_strategy {
+    type  = "binpack"
+    field = "cpu"
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.dev.arn
+    container_name   = "mongo"
+    container_port   = 8080
+  }
+
+  placement_constraints {
+    type       = "memberOf"
+    expression = "attribute:ecs.availability-zone in [us-east-1a, us-east-1b]"
+  }
+}
+
+
